@@ -1,6 +1,6 @@
 # re-region-web
 
-A web-based tool to search, look up, and map title IDs and game releases across different regions (US, EU, JP, AS, KR).
+A web-based tool to Re-Region your zipped decrypted save file, Supports PS4 & PS5 saves.
 
 ## Features
 
@@ -53,7 +53,6 @@ python -m http.server 8000
 3. Open your browser and navigate to:
 ```text
 http://localhost:8000
-
 ```
 
 
@@ -78,4 +77,4 @@ This repository is pre-configured for **GitHub Pages**:
 
 ## License
 
-This project is open-source and available under the [MIT License](https://github.com/m2k7m/re-region-web/blob/main/License).
+This project is open-source and available under the [MIT License](https://github.com/m2k7m/re-region-web/blob/main/LICENSE).

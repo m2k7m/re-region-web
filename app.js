@@ -53,6 +53,7 @@ let sfoList = [];    // parsed SFOs: { path, buf, entries, fields }
 let currentTitleId = '';
 let currentRow = null;
 let siblingRows = [];
+let singleSfoName = ''; // non-empty when a lone param.sfo (not a zip) was uploaded
 
 function setStatus(kind, msg) {
   if (!msg) { statusEl.hidden = true; statusEl.textContent = ''; return; }
@@ -245,8 +246,8 @@ function setFile(f) {
   dropZip.style.borderColor = 'var(--cyan)';
   dropZip.style.borderStyle = 'solid';
   setTimeout(() => { dropZip.style.borderColor = ''; dropZip.style.borderStyle = ''; }, 800);
-  btnAnalyze.disabled = !/\.zip$/i.test(f.name);
-  if (btnAnalyze.disabled) setStatus('error', 'Please choose a <strong>.zip</strong> file (decrypted save).');
+  btnAnalyze.disabled = !(/\.zip$/i.test(f.name) || /param\.sfo$/i.test(f.name));
+  if (btnAnalyze.disabled) setStatus('error', 'Please choose a <strong>.zip</strong> or <strong>param.sfo</strong> file (decrypted save).');
 }
 
 function resetAll() {
@@ -258,6 +259,7 @@ function resetAll() {
   targetMeta.hidden = true;
   targetMeta.textContent = '';
   targetMeta.className = 'hint';
+  singleSfoName = '';
   patchNote.hidden = true;
   btnReregion.disabled = true;
   sfoPaths = []; sfoList = [];
@@ -288,7 +290,7 @@ function renderSuggestions(q) {
   lastFiltered = filteredSibs(q);
   suggestList.innerHTML = lastFiltered.length
     ? lastFiltered.map((s, i) =>
-        `<li class="suggest-item" data-i="${i}">${flagImg(s.region)}<span class="sug-id">${esc(s.title_id)}</span><span class="sug-name">${esc(s.name)}</span></li>`).join('')
+      `<li class="suggest-item" data-i="${i}">${flagImg(s.region)}<span class="sug-id">${esc(s.title_id)}</span><span class="sug-name">${esc(s.name)}</span></li>`).join('')
     : '<li class="suggest-empty">No matching suggestions — you can still type a valid ID manually.</li>';
   suggestList.hidden = false;
 }
@@ -374,21 +376,33 @@ btnReregion.addEventListener('click', reregion);
 async function analyze() {
   if (!zipFile) return;
   btnAnalyze.disabled = true;
-  setStatus('info', 'Reading zip…');
+  setStatus('info', 'Reading file…');
   try {
     const d = await ensureDb();
-    zip = await JSZip.loadAsync(zipFile);
-    sfoPaths = Object.keys(zip.files).filter(
-      (p) => !zip.files[p].dir && /(^|\/)param\.sfo$/i.test(p)
-    );
-    if (!sfoPaths.length) throw new Error('No <strong>param.sfo</strong> found in this zip. Is it a decrypted save?');
-
     sfoList = [];
-    for (const p of sfoPaths) {
-      const buf = await zip.files[p].async('arraybuffer');
+    if (/\.zip$/i.test(zipFile.name)) {
+      singleSfoName = '';
+      zip = await JSZip.loadAsync(zipFile);
+      sfoPaths = Object.keys(zip.files).filter(
+        (p) => !zip.files[p].dir && /(^|\/)param\.sfo$/i.test(p)
+      );
+      if (!sfoPaths.length) throw new Error('No <strong>param.sfo</strong> found in this zip. Is it a decrypted save?');
+
+      for (const p of sfoPaths) {
+        const buf = await zip.files[p].async('arraybuffer');
+        const sfo = parseSfo(buf);
+        if (!sfo) throw new Error(`<strong>${esc(p)}</strong> is not a valid param.sfo (bad magic).`);
+        sfoList.push({ path: p, buf, entries: sfo.entries, fields: sfo.fields });
+      }
+    } else {
+      // Lone param.sfo file — patch it and download under the same name.
+      const buf = await zipFile.arrayBuffer();
       const sfo = parseSfo(buf);
-      if (!sfo) throw new Error(`<strong>${esc(p)}</strong> is not a valid param.sfo (bad magic).`);
-      sfoList.push({ path: p, buf, entries: sfo.entries, fields: sfo.fields });
+      if (!sfo) throw new Error('Not a valid param.sfo file (bad magic bytes).');
+      singleSfoName = zipFile.name;
+      sfoPaths = [singleSfoName];
+      sfoList.push({ path: singleSfoName, buf, entries: sfo.entries, fields: sfo.fields });
+      zip = null;
     }
 
     const ids = [...new Set(sfoList.map((s) => s.fields.TITLE_ID).filter(Boolean))];
@@ -457,7 +471,7 @@ async function reregion() {
         }
       }
       if (MGSV_NAMES[targetId]) mgsv = true;
-      zip.file(s.path, buildSfo(s.entries, s.buf));
+      if (!singleSfoName) zip.file(s.path, buildSfo(s.entries, s.buf));
     }
 
     patchNote.hidden = false;
@@ -466,9 +480,16 @@ async function reregion() {
       ? '⚠️ MGSV: SFO strings patched, but the save-data crypt re-key needs the full backend (encrypted sample save). This zip alone may not load.'
       : `Patched ${sfoPaths.length} param.sfo file(s).${savedirNote || ' SAVEDATA_DIRECTORY unchanged (not needed for this game).'}`;
 
-    const base = zipFile.name.replace(/\.zip$/i, '');
-    const outName = `${base}_to_${targetId}.zip`;
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    let blob, outName;
+    if (singleSfoName) {
+      // Lone param.sfo: keep the exact same filename.
+      outName = singleSfoName;
+      blob = new Blob([buildSfo(sfoList[0].entries, sfoList[0].buf)], { type: 'application/octet-stream' });
+    } else {
+      const base = zipFile.name.replace(/\.zip$/i, '');
+      outName = `${base}_to_${targetId}.zip`;
+      blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = outName;

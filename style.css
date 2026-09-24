@@ -1,0 +1,286 @@
+/* Re-region Saves — standalone front-end.
+   Adapted from htos-web/static/style.css (.file-drop, forms, buttons).
+   No sidebar / nav: single centered column. */
+
+:root {
+    --bg-0: #07090e;
+    --bg-1: #0c0f16;
+    --bg-2: #12161f;
+    --indigo: #6366f1;
+    --indigo-light: #818cf8;
+    --indigo-glow: rgba(99, 102, 241, 0.12);
+    --cyan: #22d3ee;
+    --cyan-dim: rgba(34, 211, 238, 0.07);
+    --green: #10b981;
+    --green-bg: rgba(16, 185, 129, 0.08);
+    --red: #f43f5e;
+    --red-bg: rgba(244, 63, 94, 0.08);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245, 158, 11, 0.08);
+    --text-1: #e2e5eb;
+    --text-2: #9ca3af;
+    --text-3: #5b6374;
+    --border: rgba(255, 255, 255, 0.06);
+    --border-focus: rgba(99, 102, 241, 0.5);
+    --r: 10px;
+    --r-sm: 6px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur: 0.2s;
+    --dur-slow: 0.35s;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Fira Code', 'JetBrains Mono', monospace;
+    background: var(--bg-0);
+    color: var(--text-1);
+    min-height: 100vh;
+    line-height: 1.55;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99, 102, 241, 0.07) 0%, transparent 70%),
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 100% 100%, 48px 48px, 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.brand {
+    margin-top: 2rem;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+    z-index: 1;
+}
+.brand span { color: var(--indigo-light); font-weight: 400; }
+
+main {
+    z-index: 1;
+    width: 100%;
+    max-width: 620px;
+    padding: 1.5rem 1.25rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 1.9rem;
+    font-weight: 800;
+}
+
+.lede { color: var(--text-2); font-size: 0.88rem; }
+.lede code, .foot-hint code {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 0.3em;
+    font-size: 0.82em;
+}
+
+/* ── Upload box (same look as resign.html .file-drop) ── */
+input[type="file"] { display: none; }
+
+.file-drop {
+    background: var(--bg-2);
+    border: 1.5px dashed rgba(255, 255, 255, 0.07);
+    border-radius: var(--r);
+    padding: 1.75rem 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--dur-slow) var(--ease);
+    position: relative;
+}
+.file-drop:hover {
+    border-color: var(--indigo);
+    background: rgba(99, 102, 241, 0.03);
+}
+.file-drop.dragover {
+    border-color: var(--cyan);
+    background: rgba(34, 211, 238, 0.04);
+    border-style: solid;
+}
+svg.file-drop-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    margin: 0 auto 0.5rem;
+    color: var(--text-3);
+    opacity: 0.5;
+    transition: all var(--dur) var(--ease);
+}
+.file-drop:hover svg.file-drop-icon { color: var(--indigo-light); transform: translateY(-2px); }
+.file-drop-text { font-size: 0.85rem; color: var(--text-2); font-weight: 500; }
+.file-drop-text strong { color: var(--indigo-light); }
+.file-drop-hint { font-size: 0.72rem; color: var(--text-3); margin-top: 0.3rem; }
+.file-drop-selected {
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--cyan);
+    font-weight: 600;
+    word-break: break-all;
+}
+
+/* ── Buttons (below the upload box, like resign.html) ── */
+button {
+    background: var(--indigo);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 0.7rem 1rem;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+button:hover:not(:disabled) { filter: brightness(1.15); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Region step ── */
+#region-step { display: flex; flex-direction: column; gap: 0.75rem; }
+#region-step[hidden] { display: none; }
+
+.current-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1rem;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.current-card .row { display: flex; gap: 0.5rem; align-items: baseline; }
+.current-card .k {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    min-width: 92px;
+}
+.current-card .v { font-weight: 600; }
+.current-card .v.mono { font-family: 'Fira Code', monospace; }
+img.flag {
+    width: 1.5em;
+    height: 1em;
+    object-fit: cover;
+    border-radius: 2px;
+    vertical-align: -0.15em;
+}
+.select-row { display: flex; gap: 0.5rem; align-items: flex-start; }
+.combo-wrap { position: relative; flex: 1; min-width: 0; }
+.combo-wrap input {
+    width: 100%;
+    font-family: 'Fira Code', monospace;
+    text-transform: uppercase;
+}
+.combo-wrap input::placeholder { text-transform: none; }
+.suggest-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0.25rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border-focus);
+    border-radius: var(--r-sm);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 10;
+}
+.suggest-list[hidden] { display: none; }
+.suggest-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+.suggest-item img.flag { width: 22px; height: 15px; flex: none; }
+.suggest-item .sug-id { font-weight: 600; white-space: nowrap; }
+.suggest-item .sug-name {
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.suggest-item:hover, .suggest-item.active { background: rgba(99, 102, 241, 0.12); }
+.suggest-empty {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.78rem;
+    color: var(--text-3);
+}
+.flag-preview { width: 34px; height: 23px; flex: none; }
+.flag-preview[hidden] { display: none; }
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.label-hint { text-transform: none; font-weight: 400; letter-spacing: normal; }
+
+select {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--r-sm);
+    font-size: 0.88rem;
+    font-family: inherit;
+    width: 100%;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6' fill='%235b6374'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.25rem;
+}
+select:focus { outline: none; border-color: var(--border-focus); }
+
+.hint { font-size: 0.78rem; color: var(--text-2); }
+.hint.warn {
+    background: var(--amber-bg);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--r-sm);
+    padding: 0.6rem 0.75rem;
+}
+
+/* ── Status ── */
+.status {
+    padding: 0.75rem 1rem;
+    border-radius: var(--r);
+    font-size: 0.85rem;
+}
+.status[hidden] { display: none; }
+.status.error { background: var(--red-bg); color: var(--red); border: 1px solid rgba(244, 63, 94, 0.2); }
+.status.info { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(34, 211, 238, 0.2); }
+.status.ok { background: var(--green-bg); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.2); }
+
+.foot-hint { font-size: 0.72rem; color: var(--text-3); }
+
+@media (max-width: 480px) {
+    .file-drop { padding: 1.25rem 1rem; }
+}

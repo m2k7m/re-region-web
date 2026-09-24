@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Re-region Saves — decrypted only</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+</head>
+<body>
+<header class="brand">re-region <span>saves</span></header>
+
+<main>
+  <h1>Re-region Saves</h1>
+  <p class="lede">Upload a <strong>zipped decrypted</strong> save. We'll detect its region from <code>param.sfo</code>, let you pick a new <code>TitleID</code> from <code>titles.db</code>, patch it in your browser, and give you back a re-zipped save. Encrypted saves are <strong>not</strong> supported here.</p>
+
+  <div id="status" class="status" hidden></div>
+
+  <!-- Step 1: upload (mirrors resign.html upload box + button below) -->
+  <div class="file-drop" id="drop-zip">
+    <input type="file" id="file-input" accept=".zip">
+    <svg class="file-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <div class="file-drop-text">Drop zipped decrypted save here, or <strong>browse files</strong></div>
+    <div class="file-drop-hint">.zip containing param.sfo (decrypted save folder)</div>
+    <div class="file-drop-selected" id="file-selected"></div>
+  </div>
+
+  <button id="btn-analyze" type="button" disabled>Analyze Save</button>
+
+  <!-- Step 2: region info + target select (appears after analysis) -->
+  <section id="region-step" hidden>
+    <div class="current-card" id="current-info"></div>
+
+    <label for="title-input">New TitleID <span class="label-hint">type it or pick a suggestion</span></label>
+    <div class="select-row">
+      <div class="combo-wrap">
+        <input id="title-input" type="text" placeholder="e.g. CUSA00208" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <ul id="suggest-list" class="suggest-list" hidden></ul>
+      </div>
+      <img id="target-flag" class="flag flag-preview" alt="" hidden>
+    </div>
+    <p class="hint" id="target-meta" hidden></p>
+    <p class="hint" id="patch-note" hidden></p>
+
+    <button id="btn-reregion" type="button" disabled>Re-region &amp; Download</button>
+  </section>
+
+  <p class="foot-hint">Runs 100% in your browser — your save never leaves your machine. Serve this folder over HTTP (<code>python -m http.server</code>) so <code>titles.db</code> can load.</p>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

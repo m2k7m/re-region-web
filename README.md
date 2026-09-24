@@ -1,53 +1,81 @@
-# Re-region Saves (front-end only, decrypted saves)
+# re-region-web
 
-Standalone static site — no server, no accounts. Everything runs in the browser.
+A web-based tool to search, look up, and map title IDs and game releases across different regions (US, EU, JP, AS, KR).
 
-## Run it
+## Features
 
-`titles.db` is loaded with `fetch()`, so you must serve the folder over HTTP
-(`file://` will fail):
+- **Multi-region Search**: Look up game titles and find their corresponding Title IDs and region variants.
+- **Offline Database**: Powered by a local SQLite database (`titles.db`) containing titles and metadata.
+- **Synchronization Script**: Includes `sync_titles.py` to update and synchronize the title database with the latest entries.
+- **Lightweight Web Interface**: Built with vanilla HTML5, CSS3, and JavaScript with SVG regional badges.
+- **GitHub Pages Ready**: Includes `.nojekyll` configuration for direct deployment.
 
-```bat
-git clone https://github.com/m2k7m/re-region-web.git
-cd re-region-web
-python -m http.server 8000
+## Project Structure
+
+```text
+re-region-web/
+├── index.html        # Main web interface
+├── app.js            # Client-side search and application logic
+├── style.css         # Styling and layout
+├── titles.db         # SQLite database storing title IDs and region metadata
+├── sync_titles.py    # Python script to update/synchronize titles.db
+├── .nojekyll         # Disables Jekyll processing for GitHub Pages hosting
+└── SVGs/             # Regional flag icons
+    ├── AS.svg        # Asia
+    ├── EU.svg        # Europe
+    ├── IP.svg        # International / Region-free
+    ├── JP.svg        # Japan
+    ├── KR.svg        # Korea
+    └── US.svg        # United States
+
 ```
 
-then open http://localhost:8000/
+## Getting Started
 
-## Use
+### Running Locally
 
-1. Drop your **zipped decrypted** save onto the upload box (same look as the
-   main site's Resign page), then **Analyze Save**.
-2. The page reads `param.sfo`, shows the current `TitleID` + game + region flag from `titles.db`.
-3. Type the target `TitleID` (suggestions with SVG flags appear from the
-   same game via `concept_id`) or pick a suggestion. Must stay in the same
-   `CUSA`/`PPSA` family; IDs missing from `titles.db` are allowed with a
-   warning.
-4. **Re-region & Download** patches every `param.sfo` in the zip and downloads
-   `<original>_to_<NEWID>.zip`.
+1. Clone or extract the repository:
+```bash
+git clone https://github.com/m2k7m/re-region-web.git
+cd re-region-web
 
-## What gets patched
+```
 
-Mirrors `[orbis.py](https://git.etawen.dev/earthonion/htos-web/src/commit/9fc6b46459d8e187ca2f7357407eabffc3fe7e0e/utils/orbis.py)`, applied as a byte-exact
-in-place patch (original header/offsets/size preserved — only the patched
-params' value bytes and used-lengths change):
 
-- `TITLE_ID` → target (always).
-- `SAVEDATA_DIRECTORY` → `<ID>01` for Xenoblade 2 IDs, MGSV `MGSV*SaveDataXX`
-  names, Minecraft legacy prefix swap. Untouched for all other games.
+2. Start a local HTTP server:
+```bash
+# Using Python 3
+python -m http.server 8000
 
-⚠️ MGSV also needs a save-data crypt re-key (backend `reregion_change_crypt`
-with an encrypted sample save) — the site warns about this; SFO-only output
-may not load for those 6 IDs. Encrypted saves are out of scope.
+```
 
-## Files
 
-- `index.html` — UI (upload box + button below, no sidebar).
-- `style.css` — adapted from `[htos-web](https://git.etawen.dev/earthonion/htos-web/src/commit/9fc6b46459d8e187ca2f7357407eabffc3fe7e0e/static/style.css)`.
-- `app.js` — zip/SFO/DB/patch logic (CDN: JSZip 3.10.1, sql.js 1.8.0).
-- `titles.db` — copy of the repo-root DB (61k titles, regions US/EU/JP/AS/KR).
+3. Open your browser and navigate to:
+```text
+http://localhost:8000
 
-## Credits
-- me
-- [earthonion](https://git.etawen.dev/earthonion)
+```
+
+
+
+### Updating the Database
+
+To sync or update `titles.db` with the latest title lists, run the Python sync script:
+
+```bash
+python sync_titles.py
+
+```
+
+## Deployment
+
+This repository is pre-configured for **GitHub Pages**:
+
+1. Push the repository to GitHub.
+2. In your repository settings, navigate to **Pages**.
+3. Under **Build and deployment**, select **Deploy from a branch** and choose `main` (or `gh-pages`) root folder (`/`).
+4. Save, and your app will be live.
+
+## License
+
+This project is open-source and available under the [MIT License](https://github.com/m2k7m/re-region-web/blob/main/License).

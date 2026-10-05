@@ -3,9 +3,7 @@
  * Flow: upload zipped DECRYPTED save -> find + parse param.sfo
  * (same parser as htos-web/templates/tools_sfo_viewer.html) ->
  * look up current region in titles.db via sql.js -> offer sibling
- * TitleIDs (same concept_id) with region flags -> patch TITLE_ID
- * (+ SAVEDATA_DIRECTORY special cases, mirroring
- * htos-web/utils/orbis.py::reregion_write) -> re-zip -> download.
+ * TitleIDs (same concept_id) with region flags -> patch TITLE_ID -> re-zip -> download.
  */
 'use strict';
 
@@ -33,7 +31,7 @@ const flagImg = (r) => REGION_SVG[r]
   ? `<img class="flag" src="SVGs/${REGION_SVG[r]}.svg" alt="${r} flag">`
   : '';
 
-// Special-case SAVEDATA_DIRECTORY rules (mirror utils/orbis.py + constants.py)
+// Special-case SAVEDATA_DIRECTORY rules
 const XENO2 = new Set(['CUSA05350', 'CUSA05088', 'CUSA04904', 'CUSA05085', 'CUSA05774']);
 const MGSV_NAMES = {
   CUSA01140: 'MGSVTPPSaveDataNA', CUSA01154: 'MGSVTPPSaveDataEU', CUSA01099: 'MGSVTPPSaveDataJP',
@@ -67,7 +65,7 @@ function esc(s) {
   return d.innerHTML;
 }
 
-/* ── SFO parsing (ported from tools_sfo_viewer.html) ── */
+/* ── SFO parsing ── */
 const FMT_UTF8 = 0x0204, FMT_INT = 0x0404;
 
 function parseSfo(buf) {
@@ -164,6 +162,42 @@ function patchStringParam(entry, str) {
   entry.dirty = true;
 }
 
+/* ── Replace EVERY occurrence of the save's TitleID in the raw SFO bytes.
+ *
+ * rewrites the ID wherever it appears — TITLE_ID, SAVEDATA_DIRECTORY,
+ * CONTENT_ID, or any field we don't know about — instead of only the keyed
+ * TITLE_ID param.
+ *
+ * Only the save's OWN id is replaced, so unrelated IDs are never touched.
+ * The swap is length-preserving (validateTarget enforces same 4-char family
+ * + 5 digits, so both are ASCII and the same length), hence it shifts no
+ * offsets: header, index table, usedLen and field padding all stay
+ * byte-identical, which is what keeps us off the re-serializer path that
+ * trips the backend's off-by-one (see buildSfo).
+ */
+function replaceIdEverywhere(buf, fromId, toId) {
+  const from = TE.encode(fromId);
+  const to = TE.encode(toId);
+  // Same length => no offsets move. Empty pattern would never advance the
+  // scan, so reject it too (analyze() already drops empty TITLE_IDs).
+  if (!from.length || from.length !== to.length) {
+    throw new Error(`Cannot swap "${fromId}" -> "${toId}": byte lengths must match and be non-zero (${from.length} vs ${to.length}).`);
+  }
+  const out = new Uint8Array(buf.slice(0));
+  let hits = 0;
+  for (let i = 0; i + from.length <= out.length; i++) {
+    let match = true;
+    for (let j = 0; j < from.length; j++) {
+      if (out[i + j] !== from[j]) { match = false; break; }
+    }
+    if (!match) continue;
+    out.set(to, i);
+    hits++;
+    i += from.length - 1; // no overlap on a same-length match
+  }
+  return { buf: out.buffer, hits };
+}
+
 /** Compute the SAVEDATA_DIRECTORY for the target ID (null = leave unchanged). */
 function savedirFor(targetId, currentSavedir) {
   if (XENO2.has(targetId)) return targetId + '01';
@@ -228,7 +262,7 @@ function detectPlatform(fields, titleId) {
   return p || '—';
 }
 
-/* ── Upload box wiring (same feel as resign.html) ── */
+/* ── Upload box wiring ── */
 dropZip.addEventListener('click', (e) => { if (e.target !== fileInput) fileInput.click(); });
 dropZip.addEventListener('dragover', (e) => { e.preventDefault(); dropZip.classList.add('dragover'); });
 dropZip.addEventListener('dragleave', (e) => { if (!dropZip.contains(e.relatedTarget)) dropZip.classList.remove('dragover'); });
@@ -456,6 +490,8 @@ async function reregion() {
   try {
     let savedirNote = '';
     let mgsv = false;
+    let totalHits = 0;
+    let patchedBuf = null;
     for (const s of sfoList) {
       const entries = s.entries;
       const titleParam = entries.find((e) => e.key === 'TITLE_ID');
@@ -471,20 +507,35 @@ async function reregion() {
         }
       }
       if (MGSV_NAMES[targetId]) mgsv = true;
-      if (!singleSfoName) zip.file(s.path, buildSfo(s.entries, s.buf));
+
+      // Swap every occurrence of this save's own TitleID in the raw bytes
+      // (TITLE_ID, SAVEDATA_DIRECTORY, CONTENT_ID, anything). Run on the
+      // ORIGINAL buffer so the count reflects all of them — patchStringParam
+      // above only edits the in-memory entry, not the bytes. Same byte
+      // length, so no offsets move and the file stays byte-exact.
+      const swept = replaceIdEverywhere(s.buf, s.fields.TITLE_ID || currentTitleId, targetId);
+      totalHits += swept.hits;
+
+      // Re-affirm the keyed params on top of the sweep: TITLE_ID, and the
+      // SAVEDATA_DIRECTORY cases that are not a plain ID swap (e.g. MGSV
+      // names, which contain no TitleID for the sweep to find).
+      const out = buildSfo(entries, swept.buf);
+
+      if (singleSfoName) patchedBuf = out;
+      else zip.file(s.path, out);
     }
 
     patchNote.hidden = false;
     patchNote.className = 'hint' + (mgsv ? ' warn' : '');
     patchNote.innerHTML = mgsv
       ? '⚠️ MGSV: SFO strings patched, but the save-data crypt re-key needs the full backend (encrypted sample save). This zip alone may not load.'
-      : `Patched ${sfoPaths.length} param.sfo file(s).${savedirNote || ' SAVEDATA_DIRECTORY unchanged (not needed for this game).'}`;
+      : `Replaced ${totalHits} occurrence${totalHits === 1 ? '' : 's'} of <strong>${esc(currentTitleId)}</strong> → <strong>${esc(targetId)}</strong> across ${sfoPaths.length} <strong>param.sfo</strong> file${sfoPaths.length === 1 ? '' : 's'}.${savedirNote}`;
 
     let blob, outName;
     if (singleSfoName) {
       // Lone param.sfo: keep the exact same filename.
       outName = singleSfoName;
-      blob = new Blob([buildSfo(sfoList[0].entries, sfoList[0].buf)], { type: 'application/octet-stream' });
+      blob = new Blob([patchedBuf], { type: 'application/octet-stream' });
     } else {
       const base = zipFile.name.replace(/\.zip$/i, '');
       outName = `${base}_to_${targetId}.zip`;

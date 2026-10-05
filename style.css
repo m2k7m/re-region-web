@@ -1,6 +1,4 @@
-/* Re-region Saves — standalone front-end.
-   Adapted from htos-web/static/style.css (.file-drop, forms, buttons).
-   No sidebar / nav: single centered column. */
+/* Re-region Saves front-end. */
 
 :root {
     --bg-0: #07090e;

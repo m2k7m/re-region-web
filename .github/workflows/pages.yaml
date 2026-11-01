@@ -1,0 +1,77 @@
+name: Sync titles and deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Sunday at 03:00 UTC.
+    - cron: '0 3 * * 0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install sync dependency
+        run: python -m pip install aiosqlite==0.21.0
+
+      - name: Sync titles before publishing
+        env:
+          TITLES_DB_PATH: titles.db
+        run: python sync_titles.py
+
+      - name: Save updated database to repository
+        run: |
+          git add -- titles.db
+          if ! git diff --cached --quiet -- titles.db; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: sync title database"
+            git push origin HEAD:main
+          fi
+
+      - name: Prepare public site only
+        run: |
+          mkdir -p _site
+          cp index.html app.js style.css titles.db .nojekyll _site/
+          cp -R SVGs _site/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

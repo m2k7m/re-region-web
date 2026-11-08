@@ -25,6 +25,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Format and organize with Biome
+        continue-on-error: true
+        run: npx --yes @biomejs/biome@2.6.6 check --write .
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -38,14 +47,16 @@ jobs:
           TITLES_DB_PATH: titles.db
         run: python sync_titles.py
 
-      - name: Save updated database to repository
+      - name: Save formatting and database changes together
         run: |
-          git add -- titles.db
-          if ! git diff --cached --quiet -- titles.db; then
+          git add --update
+          if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: sync title database"
+            git commit -m "chore: format sources and sync title database"
             git push origin HEAD:main
+          else
+            echo "No formatting or database changes; skipping commit."
           fi
 
       - name: Prepare public site only

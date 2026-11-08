@@ -85,7 +85,7 @@ function setStatus(kind, msg) {
 		return;
 	}
 	statusEl.hidden = false;
-	statusEl.className = "status " + kind;
+	statusEl.className = `status ${kind}`;
 	statusEl.innerHTML = msg;
 }
 function esc(s) {
@@ -250,7 +250,7 @@ function replaceIdEverywhere(buf, fromId, toId) {
 
 /** Compute the SAVEDATA_DIRECTORY for the target ID (null = leave unchanged). */
 function savedirFor(targetId, currentSavedir) {
-	if (XENO2.has(targetId)) return targetId + "01";
+	if (XENO2.has(targetId)) return `${targetId}01`;
 	if (MGSV_NAMES[targetId]) return MGSV_NAMES[targetId];
 	if (MINECRAFT.has(targetId) && currentSavedir) {
 		const parts = currentSavedir.split("-");
@@ -434,7 +434,7 @@ function setTargetFlag(region) {
 
 function showMeta(html, isWarn) {
 	targetMeta.innerHTML = html;
-	targetMeta.className = "hint" + (isWarn ? " warn" : "");
+	targetMeta.className = `hint${isWarn ? " warn" : ""}`;
 	targetMeta.hidden = false;
 }
 
@@ -501,7 +501,9 @@ titleInput.addEventListener("keydown", (e) => {
 			e.key === "ArrowDown"
 				? (activeSug + 1) % items.length
 				: (activeSug - 1 + items.length) % items.length;
-		items.forEach((el, i) => el.classList.toggle("active", i === activeSug));
+		items.forEach((el, i) => {
+			el.classList.toggle("active", i === activeSug);
+		});
 		items[activeSug].scrollIntoView({ block: "nearest" });
 	} else if (e.key === "Enter" && activeSug >= 0 && items[activeSug]) {
 		e.preventDefault();
@@ -686,7 +688,7 @@ async function reregion() {
 		}
 
 		patchNote.hidden = false;
-		patchNote.className = "hint" + (mgsv ? " warn" : "");
+		patchNote.className = `hint${mgsv ? " warn" : ""}`;
 		patchNote.innerHTML = mgsv
 			? "⚠️ MGSV: SFO strings patched, but the save-data crypt re-key needs the full backend (encrypted sample save). This zip alone may not load."
 			: `Replaced ${totalHits} occurrence${totalHits === 1 ? "" : "s"} of <strong>${esc(currentTitleId)}</strong> → <strong>${esc(targetId)}</strong> across ${sfoPaths.length} <strong>param.sfo</strong> file${sfoPaths.length === 1 ? "" : "s"}.${savedirNote}`;

@@ -129,8 +129,17 @@ async def sync():
                 )
 
             await conn.executemany(
-                "INSERT OR REPLACE INTO titles (title_id, name, platform, content_id, concept_id, region) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO titles (title_id, name, platform, content_id, concept_id, region) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(title_id) DO UPDATE SET "
+                "name = excluded.name, platform = excluded.platform, "
+                "content_id = excluded.content_id, concept_id = excluded.concept_id, "
+                "region = excluded.region "
+                "WHERE titles.name IS NOT excluded.name "
+                "OR titles.platform IS NOT excluded.platform "
+                "OR titles.content_id IS NOT excluded.content_id "
+                "OR titles.concept_id IS NOT excluded.concept_id "
+                "OR titles.region IS NOT excluded.region",
                 batch,
             )
             await conn.commit()

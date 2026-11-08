@@ -41,7 +41,6 @@ cd re-region-web
 
 ```
 
-
 2. Start a local HTTP server:
 ```bash
 # Using Python 3
@@ -49,13 +48,10 @@ python -m http.server 8000
 
 ```
 
-
 3. Open your browser and navigate to:
 ```text
 http://localhost:8000
 ```
-
-
 
 ### Updating the Database
 
